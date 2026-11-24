@@ -13,7 +13,14 @@ import {
   TANK_SIZE,
 } from './constants';
 import { isSpawnClear, moveTank, rectsOverlap, tankRect } from './collision';
-import { createBullet, createEnemy, createExplosion, createPlayer, pickEnemyKind } from './entities';
+import {
+  createBullet,
+  createEnemy,
+  createExplosion,
+  createPlayer,
+  pickEnemyKind,
+  tickTankAnim,
+} from './entities';
 import { updateEnemyAi } from './ai';
 import { LEVELS } from './levels';
 import { GameMap } from './map';
@@ -160,12 +167,15 @@ export class TankBattle {
       return;
     }
     player.cooldown = Math.max(0, player.cooldown - dt);
+    const prevX = player.x;
+    const prevY = player.y;
     const direction = input.getDirection();
     if (direction !== null) {
       player.dir = direction;
       const vector = DIR_VECTORS[direction];
       moveTank(this.map, this.tanks, player, vector.x * player.speed, vector.y * player.speed);
     }
+    tickTankAnim(player, dt, Math.hypot(player.x - prevX, player.y - prevY));
     if (input.isFiring()) {
       this.tryFire(player);
     }
@@ -178,7 +188,10 @@ export class TankBattle {
       .filter((tank) => tank.faction === 'enemy')
       .forEach((enemy) => {
         enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+        const prevX = enemy.x;
+        const prevY = enemy.y;
         updateEnemyAi(this.map, this.tanks, enemy, player, baseCenter, dt);
+        tickTankAnim(enemy, dt, Math.hypot(enemy.x - prevX, enemy.y - prevY));
         if (enemy.cooldown <= 0 && Math.random() < 0.03) {
           this.tryFire(enemy);
         }
@@ -197,6 +210,7 @@ export class TankBattle {
     }
     this.bullets.push(createBullet(tank));
     tank.cooldown = tank.fireInterval;
+    tank.barrelRecoil = 1;
   }
 
   private tickBullets(now: number): void {

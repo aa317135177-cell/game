@@ -1,5 +1,5 @@
-import { BULLET_SIZE, COLS, MAP_SIZE, ROWS, TANK_SIZE, TILE } from './constants';
-import { muzzlePoint } from './entities';
+import { BULLET_SIZE, COLS, MAP_SIZE, ROWS, TILE } from './constants';
+import { drawTank } from './draw-tank';
 import type { GameMap } from './map';
 import type { Bullet, Explosion, Tank } from './types';
 
@@ -130,41 +130,6 @@ function drawBase(
   ctx.fillRect(x + TILE - 2, y + 2, 4, TILE * 2 - 6);
 }
 
-function drawTank(ctx: CanvasRenderingContext2D, tank: Tank, now: number): void {
-  const blinking = tank.invincibleUntil > now && Math.floor(now / 80) % 2 === 0;
-  if (blinking) {
-    ctx.globalAlpha = 0.45;
-  }
-  const colors = getTankColors(tank);
-  const x = tank.x;
-  const y = tank.y;
-  ctx.fillStyle = colors.track;
-  if (tank.dir === 0 || tank.dir === 2) {
-    ctx.fillRect(x, y + 2, 5, TANK_SIZE - 4);
-    ctx.fillRect(x + TANK_SIZE - 5, y + 2, 5, TANK_SIZE - 4);
-  } else {
-    ctx.fillRect(x + 2, y, TANK_SIZE - 4, 5);
-    ctx.fillRect(x + 2, y + TANK_SIZE - 5, TANK_SIZE - 4, 5);
-  }
-  ctx.fillStyle = colors.body;
-  ctx.fillRect(x + 4, y + 4, TANK_SIZE - 8, TANK_SIZE - 8);
-  ctx.fillStyle = colors.cabin;
-  ctx.fillRect(x + 8, y + 8, TANK_SIZE - 16, TANK_SIZE - 16);
-  const muzzle = muzzlePoint(tank);
-  ctx.strokeStyle = colors.barrel;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(x + TANK_SIZE / 2, y + TANK_SIZE / 2);
-  ctx.lineTo(muzzle.x, muzzle.y);
-  ctx.stroke();
-  if (tank.kind === 'armor') {
-    ctx.strokeStyle = '#d9e8c8';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 6, y + 6, TANK_SIZE - 12, TANK_SIZE - 12);
-  }
-  ctx.globalAlpha = 1;
-}
-
 function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
   ctx.fillStyle = bullet.faction === 'player' ? '#ffe08a' : '#f0f0f0';
   ctx.beginPath();
@@ -180,21 +145,3 @@ function drawExplosion(ctx: CanvasRenderingContext2D, explosion: Explosion): voi
   ctx.fill();
 }
 
-function getTankColors(tank: Tank): { track: string; body: string; cabin: string; barrel: string } {
-  if (tank.faction === 'player') {
-    return { track: '#6b5a18', body: '#f0c94d', cabin: '#fff0a8', barrel: '#d7b03a' };
-  }
-  if (tank.kind === 'fast') {
-    return { track: '#5a2a12', body: '#d9753b', cabin: '#f3b07a', barrel: '#b85a28' };
-  }
-  if (tank.kind === 'armor') {
-    const cracked = tank.hp < tank.maxHp;
-    return {
-      track: '#2f3b28',
-      body: cracked ? '#6f8a4a' : '#4f6b38',
-      cabin: '#9bb56d',
-      barrel: '#3d5229',
-    };
-  }
-  return { track: '#3a3d42', body: '#cfd3d8', cabin: '#f4f6f8', barrel: '#9aa0a8' };
-}

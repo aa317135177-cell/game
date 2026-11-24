@@ -1,6 +1,8 @@
 import {
+  BARREL_RECOIL_MS,
   BULLET_SIZE,
   DIR_VECTORS,
+  ENEMY_SPEED_SCALE,
   PLAYER_FIRE_MS,
   PLAYER_SPEED,
   SPAWN_PROTECT_MS,
@@ -25,6 +27,8 @@ export function createPlayer(x: number, y: number, now: number): Tank {
     fireInterval: PLAYER_FIRE_MS,
     invincibleUntil: now + SPAWN_PROTECT_MS,
     thinkIn: 0,
+    trackPhase: 0,
+    barrelRecoil: 0,
   };
 }
 
@@ -44,6 +48,8 @@ export function createEnemy(x: number, y: number, kind: EnemyKind): Tank {
     fireInterval: stats.fireInterval,
     invincibleUntil: 0,
     thinkIn: 300,
+    trackPhase: 0,
+    barrelRecoil: 0,
   };
 }
 
@@ -71,14 +77,6 @@ export function createExplosion(x: number, y: number, radius: number): Explosion
   };
 }
 
-export function muzzlePoint(tank: Tank): { x: number; y: number } {
-  const vector = DIR_VECTORS[tank.dir];
-  return {
-    x: tank.x + TANK_SIZE / 2 + vector.x * 14,
-    y: tank.y + TANK_SIZE / 2 + vector.y * 14,
-  };
-}
-
 export function pickEnemyKind(remainingIndex: number): EnemyKind {
   if (remainingIndex >= 9) {
     return 'armor';
@@ -89,14 +87,21 @@ export function pickEnemyKind(remainingIndex: number): EnemyKind {
   return 'basic';
 }
 
+export function tickTankAnim(tank: Tank, dt: number, movedDistance: number): void {
+  if (movedDistance > 0) {
+    tank.trackPhase += movedDistance;
+  }
+  tank.barrelRecoil = Math.max(0, tank.barrelRecoil - dt / BARREL_RECOIL_MS);
+}
+
 function getEnemyStats(kind: EnemyKind): { speed: number; hp: number; fireInterval: number } {
   if (kind === 'fast') {
-    return { speed: 2.35, hp: 1, fireInterval: 700 };
+    return { speed: 2.35 * ENEMY_SPEED_SCALE, hp: 1, fireInterval: 700 };
   }
   if (kind === 'armor') {
-    return { speed: 1.25, hp: 3, fireInterval: 780 };
+    return { speed: 1.25 * ENEMY_SPEED_SCALE, hp: 3, fireInterval: 780 };
   }
-  return { speed: 1.35, hp: 1, fireInterval: 860 };
+  return { speed: 1.35 * ENEMY_SPEED_SCALE, hp: 1, fireInterval: 860 };
 }
 
 export function oppositeDir(dir: Direction): Direction {

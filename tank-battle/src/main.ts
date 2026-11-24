@@ -33,7 +33,7 @@ canvas.width = MAP_SIZE;
 canvas.height = MAP_SIZE;
 
 const game = new TankBattle();
-const input = new Input();
+const input = new Input(canvas);
 let lastTime = performance.now();
 
 overlayAction.addEventListener('click', () => {

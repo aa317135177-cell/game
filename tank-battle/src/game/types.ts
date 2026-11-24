@@ -34,6 +34,8 @@ export interface Tank {
   fireInterval: number;
   invincibleUntil: number;
   thinkIn: number;
+  trackPhase: number;
+  barrelRecoil: number;
 }
 
 export interface Bullet {

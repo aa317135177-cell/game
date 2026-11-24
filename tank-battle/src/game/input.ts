@@ -17,10 +17,12 @@ export class Input {
   private pauseQueued = false;
   private confirmQueued = false;
 
-  constructor() {
+  constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.clear);
+    canvas.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
   }
 
   getDirection(): Direction | null {
@@ -50,14 +52,11 @@ export class Input {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.clear);
+    this.canvas.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.code === 'Space' || event.code === 'KeyJ') {
-      event.preventDefault();
-      this.fireHeld = true;
-      return;
-    }
     if (event.code === 'KeyP') {
       event.preventDefault();
       this.pauseQueued = true;
@@ -78,10 +77,6 @@ export class Input {
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    if (event.code === 'Space' || event.code === 'KeyJ') {
-      this.fireHeld = false;
-      return;
-    }
     const direction = DIR_KEYS[event.code];
     if (direction === undefined) {
       return;
@@ -90,6 +85,21 @@ export class Input {
     if (index >= 0) {
       this.directions.splice(index, 1);
     }
+  };
+
+  private readonly onMouseDown = (event: MouseEvent): void => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    this.fireHeld = true;
+  };
+
+  private readonly onMouseUp = (event: MouseEvent): void => {
+    if (event.button !== 0) {
+      return;
+    }
+    this.fireHeld = false;
   };
 
   private readonly clear = (): void => {
