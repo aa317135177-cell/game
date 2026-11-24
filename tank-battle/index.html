@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>坦克大战</title>
+  </head>
+  <body>
+    <div class="app">
+      <header class="hero">
+        <p class="eyebrow">WEB · 单人</p>
+        <h1>坦克大战</h1>
+        <p class="lead">守住基地，清掉这波敌军。方向键或 WASD 移动，空格开火，P 暂停。</p>
+      </header>
+
+      <main class="stage">
+        <div class="board">
+          <canvas id="game" width="416" height="416"></canvas>
+          <section id="overlay" class="overlay">
+            <div class="dialog">
+              <h2 id="overlay-title">坦克大战</h2>
+              <p id="overlay-subtitle">保护基地，消灭全部敌军</p>
+              <button id="overlay-action" type="button">开始游戏</button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="hud">
+          <div class="stat">
+            <span>关卡</span>
+            <strong id="hud-level">1</strong>
+            <em id="hud-stage">边境哨所</em>
+          </div>
+          <div class="stat">
+            <span>生命</span>
+            <strong id="hud-lives">3</strong>
+          </div>
+          <div class="stat">
+            <span>敌军</span>
+            <strong id="hud-enemies">12</strong>
+          </div>
+          <div class="stat">
+            <span>得分</span>
+            <strong id="hud-score">0</strong>
+          </div>
+          <ul class="tips">
+            <li>黄坦克是你，灰/橙/绿是敌军</li>
+            <li>砖墙可打穿，钢墙挡弹，水面不能开</li>
+            <li>基地被打中立刻失败</li>
+            <li>回车也可开始 / 下一关</li>
+          </ul>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
