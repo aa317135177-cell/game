@@ -1,4 +1,5 @@
 import { TANK_SIZE } from './constants';
+import { drawStar, roundRect, TAU } from './draw-shapes';
 import type { Tank } from './types';
 
 interface TankPalette {
@@ -15,18 +16,40 @@ interface TankPalette {
   accent: string;
 }
 
-export function drawTank(ctx: CanvasRenderingContext2D, tank: Tank, now: number): void {
-  const blinking = tank.invincibleUntil > now && Math.floor(now / 80) % 2 === 0;
+const BONUS_FLASH_MS = 160;
+
+export function drawTank(ctx: CanvasRenderingContext2D, tank: Tank, clock: number): void {
   ctx.save();
-  if (blinking) {
-    ctx.globalAlpha = 0.45;
-  }
   ctx.translate(tank.x + TANK_SIZE / 2, tank.y + TANK_SIZE / 2);
+  ctx.save();
   ctx.rotate((tank.dir * Math.PI) / 2);
-  const palette = getPalette(tank);
+  const palette = getPalette(tank, clock);
   drawTracks(ctx, tank.trackPhase, palette);
   drawHull(ctx, tank, palette);
   drawTurret(ctx, tank, palette);
+  ctx.restore();
+  if (tank.invincibleUntil > clock) {
+    drawShield(ctx, clock, tank.invincibleUntil - clock);
+  }
+  ctx.restore();
+}
+
+function drawShield(ctx: CanvasRenderingContext2D, clock: number, remaining: number): void {
+  if (remaining < 1000 && Math.floor(clock / 90) % 2 === 0) {
+    return;
+  }
+  const pulse = (Math.sin(clock / 90) + 1) / 2;
+  ctx.save();
+  ctx.rotate(clock / 260);
+  ctx.strokeStyle = `rgba(150, 220, 255, ${0.55 + pulse * 0.35})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(0, 0, TANK_SIZE / 2 + 3, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = `rgba(150, 220, 255, ${0.08 + pulse * 0.08})`;
+  ctx.fill();
   ctx.restore();
 }
 
@@ -65,11 +88,11 @@ function drawTrack(
   for (let index = 0; index < 4; index += 1) {
     const wheelY = -8.2 + index * 5.4;
     ctx.beginPath();
-    ctx.arc(x + width / 2, wheelY, 1.7, 0, Math.PI * 2);
+    ctx.arc(x + width / 2, wheelY, 1.7, 0, TAU);
     ctx.fillStyle = palette.wheel;
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(x + width / 2, wheelY, 0.6, 0, Math.PI * 2);
+    ctx.arc(x + width / 2, wheelY, 0.6, 0, TAU);
     ctx.fillStyle = palette.metal;
     ctx.fill();
   }
@@ -105,69 +128,54 @@ function drawHull(ctx: CanvasRenderingContext2D, tank: Tank, palette: TankPalett
 
 function drawTurret(ctx: CanvasRenderingContext2D, tank: Tank, palette: TankPalette): void {
   ctx.beginPath();
-  ctx.arc(0, 0.6, 6.2, 0, Math.PI * 2);
+  ctx.arc(0, 0.6, 6.2, 0, TAU);
   ctx.fillStyle = palette.hullDark;
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(0, 0.2, 5.2, 0, Math.PI * 2);
+  ctx.arc(0, 0.2, 5.2, 0, TAU);
   ctx.fillStyle = palette.turret;
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(-1.2, -1, 2.1, 0, Math.PI * 2);
+  ctx.arc(-1.2, -1, 2.1, 0, TAU);
   ctx.fillStyle = palette.hullLight;
   ctx.fill();
 
   const recoil = Math.min(1, Math.max(0, tank.barrelRecoil));
   const sleeveLength = 6.2;
   const barrelLength = 8.4 - recoil * 5.4;
+  const barrelWidth = 2.5 + tank.firePower * 0.4;
+  const sleeveWidth = 4.2 + tank.firePower * 0.4;
   ctx.fillStyle = palette.sleeve;
-  ctx.fillRect(-2.1, -sleeveLength - 1.2, 4.2, sleeveLength);
+  ctx.fillRect(-sleeveWidth / 2, -sleeveLength - 1.2, sleeveWidth, sleeveLength);
   ctx.fillStyle = palette.barrel;
-  ctx.fillRect(-1.25, -sleeveLength - barrelLength, 2.5, barrelLength);
+  ctx.fillRect(-barrelWidth / 2, -sleeveLength - barrelLength, barrelWidth, barrelLength);
   ctx.fillStyle = palette.metal;
-  ctx.fillRect(-1.8, -sleeveLength - barrelLength - 1.4, 3.6, 1.6);
+  ctx.fillRect(-barrelWidth / 2 - 0.55, -sleeveLength - barrelLength - 1.4, barrelWidth + 1.1, 1.6);
 
+  ctx.fillStyle = palette.accent;
   if (tank.faction === 'player') {
-    ctx.fillStyle = palette.accent;
     drawStar(ctx, 1.4, 1.6, 2.1);
   } else {
-    ctx.fillStyle = palette.accent;
     ctx.fillRect(0.6, 1.2, 2.2, 2.2);
   }
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
-  ctx.beginPath();
-  for (let index = 0; index < 5; index += 1) {
-    const outer = -Math.PI / 2 + (index * 2 * Math.PI) / 5;
-    const inner = outer + Math.PI / 5;
-    const command = index === 0 ? ctx.moveTo : ctx.lineTo;
-    command.call(ctx, x + Math.cos(outer) * radius, y + Math.sin(outer) * radius);
-    ctx.lineTo(x + Math.cos(inner) * radius * 0.42, y + Math.sin(inner) * radius * 0.42);
+function getPalette(tank: Tank, clock: number): TankPalette {
+  if (tank.bonus && Math.floor(clock / BONUS_FLASH_MS) % 2 === 0) {
+    return {
+      track: '#4a1414',
+      pad: '#2a0a0a',
+      wheel: '#1a0606',
+      hull: '#d9443b',
+      hullDark: '#8a1f1c',
+      hullLight: '#f39a8a',
+      turret: '#e0574d',
+      barrel: '#b8302a',
+      sleeve: '#7a1d18',
+      metal: '#f0d2cc',
+      accent: '#ffe08a',
+    };
   }
-  ctx.closePath();
-  ctx.fill();
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-): void {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + width, y, x + width, y + height, r);
-  ctx.arcTo(x + width, y + height, x, y + height, r);
-  ctx.arcTo(x, y + height, x, y, r);
-  ctx.arcTo(x, y, x + width, y, r);
-  ctx.closePath();
-}
-
-function getPalette(tank: Tank): TankPalette {
   if (tank.faction === 'player') {
     return {
       track: '#4d4218',

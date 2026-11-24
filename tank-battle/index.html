@@ -10,7 +10,7 @@
       <header class="hero">
         <p class="eyebrow">WEB · 单人</p>
         <h1>坦克大战</h1>
-        <p class="lead">守住基地，清掉这波敌军。方向键或 WASD 移动，鼠标左键开火，P 暂停。</p>
+        <p class="lead">方向键或 WASD 移动，鼠标左键开火，P 暂停，M 静音。</p>
       </header>
 
       <main class="stage">
@@ -28,27 +28,39 @@
         <aside class="hud">
           <div class="stat">
             <span>关卡</span>
-            <strong id="hud-level">1</strong>
+            <strong id="hud-level">1/5</strong>
             <em id="hud-stage">边境哨所</em>
           </div>
-          <div class="stat">
-            <span>生命</span>
-            <strong id="hud-lives">3</strong>
+          <div class="stat-grid">
+            <div class="stat">
+              <span>生命</span>
+              <strong id="hud-lives">3</strong>
+            </div>
+            <div class="stat">
+              <span>敌军</span>
+              <strong id="hud-enemies">12</strong>
+            </div>
+            <div class="stat">
+              <span>得分</span>
+              <strong id="hud-score">0</strong>
+            </div>
+            <div class="stat">
+              <span>火力</span>
+              <strong id="hud-power" class="power">☆☆☆</strong>
+            </div>
           </div>
-          <div class="stat">
-            <span>敌军</span>
-            <strong id="hud-enemies">12</strong>
-          </div>
-          <div class="stat">
-            <span>得分</span>
-            <strong id="hud-score">0</strong>
-          </div>
+          <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">音效：开</button>
+          <ul class="legend">
+            <li><canvas data-power-up="star"></canvas>星星：火力升级，满级可打穿钢墙</li>
+            <li><canvas data-power-up="shovel"></canvas>铲子：基地围墙变钢墙 15 秒</li>
+            <li><canvas data-power-up="bomb"></canvas>炸弹：消灭场上全部敌军</li>
+            <li><canvas data-power-up="helmet"></canvas>头盔：无敌护盾 10 秒</li>
+            <li><canvas data-power-up="tank"></canvas>坦克：生命 +1</li>
+          </ul>
           <ul class="tips">
-            <li>黄坦克是你，灰/橙/绿是敌军</li>
-            <li>砖墙可打穿，钢墙挡弹，水面不能开</li>
+            <li>打中闪红光的敌军会掉落道具</li>
+            <li>砖墙可打穿，钢墙挡弹，水面不能开，草丛能藏身</li>
             <li>基地被打中立刻失败</li>
-            <li>在战场上按住鼠标左键开火</li>
-            <li>回车也可开始 / 下一关</li>
           </ul>
         </aside>
       </main>

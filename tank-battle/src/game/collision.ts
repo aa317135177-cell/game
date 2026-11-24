@@ -1,4 +1,4 @@
-import { SNAP, TANK_SIZE } from './constants';
+import { LANE_OFFSET, TANK_SIZE, TILE } from './constants';
 import type { GameMap } from './map';
 import type { Rect, Tank } from './types';
 
@@ -18,22 +18,28 @@ export function isSpawnClear(map: GameMap, tanks: Tank[], x: number, y: number):
   return tanks.every((tank) => !rectsOverlap(spawnRect, tankRect(tank)));
 }
 
-export function tryMoveTank(map: GameMap, tanks: Tank[], tank: Tank, nextX: number, nextY: number): boolean {
-  if (!map.canTankOccupy(nextX, nextY)) {
+function canPlaceTank(map: GameMap, tanks: Tank[], tank: Tank, x: number, y: number): boolean {
+  if (!map.canTankOccupy(x, y)) {
     return false;
   }
-  const nextRect = { x: nextX, y: nextY, w: TANK_SIZE, h: TANK_SIZE };
-  const blockedByTank = tanks.some(
-    (other) => other.id !== tank.id && rectsOverlap(nextRect, tankRect(other)),
-  );
-  if (blockedByTank) {
+  const nextRect = { x, y, w: TANK_SIZE, h: TANK_SIZE };
+  return tanks.every((other) => other.id === tank.id || !rectsOverlap(nextRect, tankRect(other)));
+}
+
+function tryMoveTank(map: GameMap, tanks: Tank[], tank: Tank, x: number, y: number): boolean {
+  if (!canPlaceTank(map, tanks, tank, x, y)) {
     return false;
   }
-  tank.x = nextX;
-  tank.y = nextY;
+  tank.x = x;
+  tank.y = y;
   return true;
 }
 
+function nearestLane(value: number): number {
+  return Math.round((value - LANE_OFFSET) / TILE) * TILE + LANE_OFFSET;
+}
+
+// 被挡住时，如果对齐到最近的通道就能通过，就沿垂直方向滑过去，避免卡在墙角。
 export function moveTank(map: GameMap, tanks: Tank[], tank: Tank, dx: number, dy: number): boolean {
   if (dx === 0 && dy === 0) {
     return false;
@@ -41,17 +47,19 @@ export function moveTank(map: GameMap, tanks: Tank[], tank: Tank, dx: number, dy
   if (tryMoveTank(map, tanks, tank, tank.x + dx, tank.y + dy)) {
     return true;
   }
+  const step = Math.abs(dx !== 0 ? dx : dy);
   if (dx !== 0) {
-    const snappedY = Math.round(tank.y / SNAP) * SNAP;
-    if (snappedY !== tank.y) {
-      return tryMoveTank(map, tanks, tank, tank.x + dx, snappedY);
+    const laneY = nearestLane(tank.y);
+    if (laneY === tank.y || !canPlaceTank(map, tanks, tank, tank.x + dx, laneY)) {
+      return false;
     }
+    const shift = Math.sign(laneY - tank.y) * Math.min(step, Math.abs(laneY - tank.y));
+    return tryMoveTank(map, tanks, tank, tank.x, tank.y + shift);
   }
-  if (dy !== 0) {
-    const snappedX = Math.round(tank.x / SNAP) * SNAP;
-    if (snappedX !== tank.x) {
-      return tryMoveTank(map, tanks, tank, snappedX, tank.y + dy);
-    }
+  const laneX = nearestLane(tank.x);
+  if (laneX === tank.x || !canPlaceTank(map, tanks, tank, laneX, tank.y + dy)) {
+    return false;
   }
-  return false;
+  const shift = Math.sign(laneX - tank.x) * Math.min(step, Math.abs(laneX - tank.x));
+  return tryMoveTank(map, tanks, tank, tank.x + shift, tank.y);
 }

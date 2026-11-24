@@ -1,23 +1,35 @@
 import { BULLET_SIZE, COLS, MAP_SIZE, ROWS, TILE } from './constants';
+import { drawExplosion, drawPowerUp } from './draw-effects';
+import { TAU } from './draw-shapes';
 import { drawTank } from './draw-tank';
 import type { GameMap } from './map';
-import type { Bullet, Explosion, Tank } from './types';
+import type { Bullet, Explosion, PowerUp, StageBanner, Tank } from './types';
 
-export function renderWorld(
-  ctx: CanvasRenderingContext2D,
-  map: GameMap,
-  tanks: Tank[],
-  bullets: Bullet[],
-  explosions: Explosion[],
-  now: number,
-): void {
+export interface RenderState {
+  map: GameMap;
+  tanks: Tank[];
+  bullets: Bullet[];
+  explosions: Explosion[];
+  powerUp: PowerUp | null;
+  clock: number;
+  baseRingFlashing: boolean;
+  banner: StageBanner | null;
+}
+
+export function renderWorld(ctx: CanvasRenderingContext2D, state: RenderState): void {
   ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
   drawGround(ctx);
-  drawTiles(ctx, map, now, false);
-  tanks.forEach((tank) => drawTank(ctx, tank, now));
-  bullets.forEach((bullet) => drawBullet(ctx, bullet));
-  explosions.forEach((explosion) => drawExplosion(ctx, explosion));
-  drawTiles(ctx, map, now, true);
+  drawTiles(ctx, state, false);
+  state.tanks.forEach((tank) => drawTank(ctx, tank, state.clock));
+  state.bullets.forEach((bullet) => drawBullet(ctx, bullet));
+  drawTiles(ctx, state, true);
+  if (state.powerUp) {
+    drawPowerUp(ctx, state.powerUp, state.clock);
+  }
+  state.explosions.forEach((explosion) => drawExplosion(ctx, explosion));
+  if (state.banner) {
+    drawBanner(ctx, state.banner);
+  }
 }
 
 function drawGround(ctx: CanvasRenderingContext2D): void {
@@ -37,14 +49,12 @@ function drawGround(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-function drawTiles(ctx: CanvasRenderingContext2D, map: GameMap, now: number, grassOnly: boolean): void {
+function drawTiles(ctx: CanvasRenderingContext2D, state: RenderState, grassOnly: boolean): void {
+  const { map, clock, baseRingFlashing } = state;
   for (let row = 0; row < ROWS; row += 1) {
     for (let col = 0; col < COLS; col += 1) {
       const tile = map.getTile(col, row);
-      if (grassOnly && tile !== 4) {
-        continue;
-      }
-      if (!grassOnly && tile === 4) {
+      if (grassOnly !== (tile === 4)) {
         continue;
       }
       const x = col * TILE;
@@ -52,9 +62,14 @@ function drawTiles(ctx: CanvasRenderingContext2D, map: GameMap, now: number, gra
       if (tile === 1) {
         drawBrick(ctx, x, y);
       } else if (tile === 2) {
-        drawSteel(ctx, x, y);
+        const showAsBrick = baseRingFlashing && map.isFortifiedCell(col, row);
+        if (showAsBrick) {
+          drawBrick(ctx, x, y);
+        } else {
+          drawSteel(ctx, x, y);
+        }
       } else if (tile === 3) {
-        drawWater(ctx, x, y, now);
+        drawWater(ctx, x, y, clock);
       } else if (tile === 4) {
         drawGrass(ctx, x, y);
       } else if (tile === 5) {
@@ -83,8 +98,8 @@ function drawSteel(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fillRect(x + 6, y + 6, 4, 4);
 }
 
-function drawWater(ctx: CanvasRenderingContext2D, x: number, y: number, now: number): void {
-  const wave = (Math.sin(now / 220 + x * 0.2 + y * 0.15) + 1) / 2;
+function drawWater(ctx: CanvasRenderingContext2D, x: number, y: number, clock: number): void {
+  const wave = (Math.sin(clock / 220 + x * 0.2 + y * 0.15) + 1) / 2;
   ctx.fillStyle = `rgb(${30 + wave * 20}, ${90 + wave * 40}, ${150 + wave * 40})`;
   ctx.fillRect(x, y, TILE, TILE);
   ctx.strokeStyle = 'rgba(180,220,255,0.35)';
@@ -95,7 +110,7 @@ function drawWater(ctx: CanvasRenderingContext2D, x: number, y: number, now: num
 }
 
 function drawGrass(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = 'rgba(62, 140, 58, 0.82)';
+  ctx.fillStyle = 'rgba(62, 140, 58, 0.88)';
   ctx.fillRect(x, y, TILE, TILE);
   ctx.strokeStyle = 'rgba(30, 80, 32, 0.8)';
   ctx.beginPath();
@@ -116,32 +131,47 @@ function drawBase(
 ): void {
   ctx.fillStyle = '#4a2c12';
   ctx.fillRect(x, y, TILE, TILE);
-  if (map.getTile(col, row - 1) === 5 || map.getTile(col - 1, row) === 5) {
+  // 基地占 2x2 格，徽标在最后绘制的右下格画，避免被其余格的底色盖住。
+  if (map.getTile(col + 1, row) === 5 || map.getTile(col, row + 1) === 5) {
     return;
   }
+  const originX = x - TILE;
+  const originY = y - TILE;
   ctx.fillStyle = '#e8c547';
   ctx.beginPath();
-  ctx.moveTo(x + TILE, y + 6);
-  ctx.lineTo(x + TILE * 2 - 4, y + TILE * 2 - 4);
-  ctx.lineTo(x + 4, y + TILE * 2 - 4);
+  ctx.moveTo(originX + TILE, originY + 6);
+  ctx.lineTo(originX + TILE * 2 - 4, originY + TILE * 2 - 4);
+  ctx.lineTo(originX + 4, originY + TILE * 2 - 4);
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = '#9a1f1f';
-  ctx.fillRect(x + TILE - 2, y + 2, 4, TILE * 2 - 6);
+  ctx.fillRect(originX + TILE - 2, originY + 2, 4, TILE * 2 - 6);
 }
 
 function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
+  const centerX = bullet.x + BULLET_SIZE / 2;
+  const centerY = bullet.y + BULLET_SIZE / 2;
+  if (bullet.breaksSteel) {
+    ctx.fillStyle = 'rgba(255, 120, 60, 0.45)';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 5.5, 0, TAU);
+    ctx.fill();
+  }
   ctx.fillStyle = bullet.faction === 'player' ? '#ffe08a' : '#f0f0f0';
   ctx.beginPath();
-  ctx.arc(bullet.x + BULLET_SIZE / 2, bullet.y + BULLET_SIZE / 2, 3.2, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, 3.2, 0, TAU);
   ctx.fill();
 }
 
-function drawExplosion(ctx: CanvasRenderingContext2D, explosion: Explosion): void {
-  const progress = explosion.age / explosion.maxAge;
-  ctx.fillStyle = `rgba(255, ${160 - progress * 80}, 40, ${1 - progress})`;
-  ctx.beginPath();
-  ctx.arc(explosion.x, explosion.y, explosion.radius * (0.4 + progress), 0, Math.PI * 2);
-  ctx.fill();
+function drawBanner(ctx: CanvasRenderingContext2D, banner: StageBanner): void {
+  ctx.save();
+  ctx.globalAlpha = banner.alpha;
+  ctx.fillStyle = 'rgba(15, 14, 10, 0.78)';
+  ctx.fillRect(0, MAP_SIZE / 2 - 26, MAP_SIZE, 52);
+  ctx.fillStyle = '#e8c547';
+  ctx.font = 'bold 22px "Avenir Next", "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(banner.text, MAP_SIZE / 2, MAP_SIZE / 2);
+  ctx.restore();
 }
-

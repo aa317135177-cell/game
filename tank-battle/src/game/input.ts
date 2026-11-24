@@ -16,6 +16,7 @@ export class Input {
   private fireHeld = false;
   private pauseQueued = false;
   private confirmQueued = false;
+  private muteQueued = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', this.onKeyDown);
@@ -48,6 +49,12 @@ export class Input {
     return queued;
   }
 
+  consumeMute(): boolean {
+    const queued = this.muteQueued;
+    this.muteQueued = false;
+    return queued;
+  }
+
   dispose(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
@@ -63,7 +70,12 @@ export class Input {
       return;
     }
     if (event.code === 'Enter') {
+      event.preventDefault();
       this.confirmQueued = true;
+      return;
+    }
+    if (event.code === 'KeyM') {
+      this.muteQueued = true;
       return;
     }
     const direction = DIR_KEYS[event.code];

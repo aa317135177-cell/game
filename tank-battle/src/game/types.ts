@@ -8,6 +8,24 @@ export type Faction = 'player' | 'enemy';
 
 export type EnemyKind = 'basic' | 'fast' | 'armor';
 
+export type PowerUpKind = 'star' | 'shovel' | 'bomb' | 'helmet' | 'tank';
+
+export type BulletImpact = 'none' | 'brick' | 'steel' | 'steelBroken' | 'base';
+
+export type ExplosionKind = 'small' | 'big' | 'score';
+
+export type SoundName =
+  | 'start'
+  | 'fire'
+  | 'hitBrick'
+  | 'hitSteel'
+  | 'explode'
+  | 'bigExplode'
+  | 'powerUpSpawn'
+  | 'powerUpPick'
+  | 'levelClear'
+  | 'gameOver';
+
 export interface Point {
   x: number;
   y: number;
@@ -36,6 +54,8 @@ export interface Tank {
   thinkIn: number;
   trackPhase: number;
   barrelRecoil: number;
+  bonus: boolean;
+  firePower: number;
 }
 
 export interface Bullet {
@@ -45,14 +65,31 @@ export interface Bullet {
   dir: Direction;
   faction: Faction;
   ownerId: number;
+  speed: number;
+  breaksSteel: boolean;
 }
 
 export interface Explosion {
+  kind: ExplosionKind;
   x: number;
   y: number;
   age: number;
   maxAge: number;
-  radius: number;
+  size: number;
+  seed: number;
+  label: string;
+}
+
+export interface PowerUp {
+  kind: PowerUpKind;
+  x: number;
+  y: number;
+  expiresAt: number;
+}
+
+export interface StageBanner {
+  text: string;
+  alpha: number;
 }
 
 export interface HudSnapshot {
@@ -62,6 +99,7 @@ export interface HudSnapshot {
   lives: number;
   enemiesLeft: number;
   score: number;
+  firePower: number;
 }
 
 export interface OverlayCopy {
