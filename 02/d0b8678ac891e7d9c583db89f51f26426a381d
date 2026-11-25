@@ -1,0 +1,23 @@
+tank-battle/src/game/levels.ts
+  s_ad59ca49700e3a::t_dfbcd74c84a155 9-10,35-37,57-59
+tank-battle/src/game/entities.ts
+  s_ad59ca49700e3a::t_dfbcd74c84a155 61,75
+tank-battle/src/game/game.ts
+  s_ad59ca49700e3a::t_dfbcd74c84a155 203,266,490,492,507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "02d0b8678ac891e7d9c583db89f51f26426a381d",
+  "prompts": {},
+  "sessions": {
+    "s_ad59ca49700e3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a21172-803e-7091-96e7-867dfddf2e88",
+        "model": "unknown"
+      },
+      "human_author": "bbhu <bbhu@trip.com>"
+    }
+  }
+}
