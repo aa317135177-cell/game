@@ -1,8 +1,17 @@
 import { TANK_SIZE } from './constants';
 import { drawStar, roundRect, TAU } from './draw-shapes';
+import {
+  drawGoldTrim,
+  drawGun,
+  drawMissilePods,
+  drawReactivePlates,
+  drawTrackSkirts,
+  drawTurretGoldRing,
+  UPGRADE_GOLD,
+} from './draw-tank-upgrades';
 import type { Tank } from './types';
 
-interface TankPalette {
+export interface TankPalette {
   track: string;
   pad: string;
   wheel: string;
@@ -25,7 +34,17 @@ export function drawTank(ctx: CanvasRenderingContext2D, tank: Tank, clock: numbe
   ctx.rotate((tank.dir * Math.PI) / 2);
   const palette = getPalette(tank, clock);
   drawTracks(ctx, tank.trackPhase, palette);
+  if (tank.firePower >= 1) {
+    drawTrackSkirts(ctx, palette);
+  }
   drawHull(ctx, tank, palette);
+  if (tank.firePower >= 2) {
+    drawReactivePlates(ctx, palette);
+  }
+  if (tank.firePower >= 3) {
+    drawGoldTrim(ctx);
+    drawMissilePods(ctx, palette);
+  }
   drawTurret(ctx, tank, palette);
   ctx.restore();
   if (tank.invincibleUntil > clock) {
@@ -127,35 +146,37 @@ function drawHull(ctx: CanvasRenderingContext2D, tank: Tank, palette: TankPalett
 }
 
 function drawTurret(ctx: CanvasRenderingContext2D, tank: Tank, palette: TankPalette): void {
+  const radius = tank.firePower >= 2 ? 5.8 : 5.2;
   ctx.beginPath();
-  ctx.arc(0, 0.6, 6.2, 0, TAU);
+  ctx.arc(0, 0.6, radius + 1, 0, TAU);
   ctx.fillStyle = palette.hullDark;
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(0, 0.2, 5.2, 0, TAU);
+  ctx.arc(0, 0.2, radius, 0, TAU);
   ctx.fillStyle = palette.turret;
   ctx.fill();
   ctx.beginPath();
   ctx.arc(-1.2, -1, 2.1, 0, TAU);
   ctx.fillStyle = palette.hullLight;
   ctx.fill();
+  if (tank.firePower >= 3) {
+    drawTurretGoldRing(ctx, radius);
+  }
 
   const recoil = Math.min(1, Math.max(0, tank.barrelRecoil));
-  const sleeveLength = 6.2;
-  const barrelLength = 8.4 - recoil * 5.4;
-  const barrelWidth = 2.5 + tank.firePower * 0.4;
-  const sleeveWidth = 4.2 + tank.firePower * 0.4;
-  ctx.fillStyle = palette.sleeve;
-  ctx.fillRect(-sleeveWidth / 2, -sleeveLength - 1.2, sleeveWidth, sleeveLength);
-  ctx.fillStyle = palette.barrel;
-  ctx.fillRect(-barrelWidth / 2, -sleeveLength - barrelLength, barrelWidth, barrelLength);
-  ctx.fillStyle = palette.metal;
-  ctx.fillRect(-barrelWidth / 2 - 0.55, -sleeveLength - barrelLength - 1.4, barrelWidth + 1.1, 1.6);
+  drawGun(ctx, palette, tank.firePower, recoil);
 
-  ctx.fillStyle = palette.accent;
   if (tank.faction === 'player') {
-    drawStar(ctx, 1.4, 1.6, 2.1);
+    const goldStar = tank.firePower >= 3;
+    ctx.fillStyle = goldStar ? UPGRADE_GOLD : palette.accent;
+    drawStar(ctx, 1.4, 1.6, goldStar ? 2.5 : 2.1);
+    if (goldStar) {
+      ctx.strokeStyle = palette.hullDark;
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
   } else {
+    ctx.fillStyle = palette.accent;
     ctx.fillRect(0.6, 1.2, 2.2, 2.2);
   }
 }

@@ -65,6 +65,7 @@ export interface Bullet {
   dir: Direction;
   faction: Faction;
   ownerId: number;
+  firePower: number;
   speed: number;
   breaksSteel: boolean;
 }
@@ -77,6 +78,7 @@ export interface Explosion {
   maxAge: number;
   size: number;
   seed: number;
+  firePower: number;
   label: string;
 }
 

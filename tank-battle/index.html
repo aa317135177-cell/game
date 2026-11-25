@@ -15,6 +15,7 @@
 
       <main class="stage">
         <div class="board">
+          <img id="terrain-atlas" src="./src/assets/arcade-terrain.png" alt="" hidden />
           <canvas id="game" width="416" height="416"></canvas>
           <section id="overlay" class="overlay">
             <div class="dialog">
@@ -59,7 +60,8 @@
           </ul>
           <ul class="tips">
             <li>打中闪红光的敌军会掉落道具</li>
-            <li>砖墙可打穿，钢墙挡弹，水面不能开，草丛能藏身</li>
+            <li>砖墙可打穿，钢墙挡弹，水面不能开</li>
+            <li>车身中心进入草丛可躲开追踪，流弹仍能命中</li>
             <li>基地被打中立刻失败</li>
           </ul>
         </aside>

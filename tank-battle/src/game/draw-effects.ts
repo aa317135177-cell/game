@@ -1,6 +1,6 @@
-import { POWER_UP_BLINK_MS, TANK_SIZE } from './constants';
+import { BULLET_SIZE, POWER_UP_BLINK_MS, TANK_SIZE } from './constants';
 import { drawStar, roundRect, seededRandom, TAU } from './draw-shapes';
-import type { Explosion, PowerUp, PowerUpKind } from './types';
+import type { Bullet, Explosion, PowerUp, PowerUpKind } from './types';
 
 const ICON_GOLD = '#e8c547';
 const ICON_DARK = '#1d1a12';
@@ -121,6 +121,53 @@ function drawMiniTank(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(-1.2, -11, 2.4, 9);
 }
 
+const SHELL_COLORS = ['#ffd36b', '#ffb14b', '#72e5ff', '#ff634c'] as const;
+
+export function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
+  const x = bullet.x + BULLET_SIZE / 2;
+  const y = bullet.y + BULLET_SIZE / 2;
+  if (bullet.firePower === 0) {
+    ctx.fillStyle = bullet.faction === 'player' ? '#ffe08a' : '#f0f0f0';
+    ctx.beginPath();
+    ctx.arc(x, y, 3.2, 0, TAU);
+    ctx.fill();
+    return;
+  }
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(bullet.dir * Math.PI / 2);
+  ctx.fillStyle = SHELL_COLORS[bullet.firePower];
+  if (bullet.firePower === 2) {
+    // 两道凝聚的曳光共用一个弹头和一处命中点。
+    drawTracer(ctx, -1.8, 1.4, 11);
+    drawTracer(ctx, 1.8, 1.4, 11);
+  } else {
+    const heavy = bullet.firePower === 3;
+    drawTracer(ctx, 0, heavy ? 3.7 : 2, heavy ? 17 : 8);
+  }
+  const halfWidth = 1.5 + bullet.firePower * 0.55;
+  ctx.beginPath();
+  ctx.moveTo(0, -3.8);
+  ctx.quadraticCurveTo(halfWidth, -1.8, halfWidth, 2.7);
+  ctx.lineTo(-halfWidth, 2.7);
+  ctx.quadraticCurveTo(-halfWidth, -1.8, 0, -3.8);
+  ctx.fill();
+  ctx.fillStyle = '#fff5d8';
+  ctx.fillRect(-0.85, -2.8, 1.7, 4.7);
+  ctx.restore();
+}
+
+function drawTracer(ctx: CanvasRenderingContext2D, x: number, halfWidth: number, length: number): void {
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(x - halfWidth, 1);
+  ctx.lineTo(x, length);
+  ctx.lineTo(x + halfWidth, 1);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
 export function drawExplosion(ctx: CanvasRenderingContext2D, explosion: Explosion): void {
   const progress = Math.min(1, explosion.age / explosion.maxAge);
   if (explosion.kind === 'score') {
@@ -147,12 +194,12 @@ function drawSmallBlast(
   ctx.beginPath();
   ctx.arc(explosion.x, explosion.y, explosion.size * 0.45 * (1 - progress * 0.6), 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = '#ff9b2e';
+  ctx.strokeStyle = explosion.firePower ? SHELL_COLORS[explosion.firePower] : '#ff9b2e';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(explosion.x, explosion.y, explosion.size * (0.4 + progress * 0.8), 0, TAU);
   ctx.stroke();
-  drawSparks(ctx, explosion, progress, random, 5, '#ffd36b');
+  drawSparks(ctx, explosion, progress, random, 5 + explosion.firePower * 2, SHELL_COLORS[explosion.firePower]);
   ctx.restore();
 }
 
@@ -199,7 +246,7 @@ function drawBigBlast(
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  drawSparks(ctx, explosion, progress, random, 10, '#ffcf5a');
+  drawSparks(ctx, explosion, progress, random, 10 + explosion.firePower * 2, explosion.firePower ? SHELL_COLORS[explosion.firePower] : '#ffcf5a');
   ctx.restore();
 }
 

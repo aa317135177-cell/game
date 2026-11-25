@@ -210,6 +210,10 @@ export class GameMap {
     return { x: baseRect.x + baseRect.w / 2, y: baseRect.y + baseRect.h / 2 };
   }
 
+  isGrassAt(x: number, y: number): boolean {
+    return this.getTile(Math.floor(x / TILE), Math.floor(y / TILE)) === 4;
+  }
+
   getTile(col: number, row: number): TileType {
     if (!isInside(col, row)) {
       return 2;

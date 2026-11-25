@@ -71,6 +71,7 @@ export function createBullet(tank: Tank): Bullet {
     dir: tank.dir,
     faction: tank.faction,
     ownerId: tank.id,
+    firePower: isPlayer ? tank.firePower : 0,
     speed: isPlayer ? fireStats.bulletSpeed : BULLET_SPEED,
     breaksSteel: isPlayer && fireStats.breaksSteel,
   };
@@ -82,7 +83,7 @@ const EXPLOSION_MAX_AGE: Record<ExplosionKind, number> = {
   score: 900,
 };
 
-export function createExplosion(kind: ExplosionKind, x: number, y: number, size: number, label = ''): Explosion {
+export function createExplosion(kind: ExplosionKind, x: number, y: number, size: number, label = '', firePower = 0): Explosion {
   return {
     kind,
     x,
@@ -92,6 +93,7 @@ export function createExplosion(kind: ExplosionKind, x: number, y: number, size:
     size,
     seed: Math.floor(Math.random() * 0xffffffff),
     label,
+    firePower,
   };
 }
 

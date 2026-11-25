@@ -8,7 +8,13 @@ import { renderWorld } from './game/render';
 import { SoundBoard } from './game/sound';
 
 const LEGEND_ICON_SIZE = 22;
-const MAX_FRAME_MS = 32;
+const TICKS_PER_SECOND = 60;
+const TICK_MS = 1000 / TICKS_PER_SECOND;
+const MAX_CATCH_UP_TICKS = 6;
+
+function tickAt(timeMs: number): number {
+  return Math.floor(timeMs * TICKS_PER_SECOND / 1000);
+}
 
 function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -19,6 +25,7 @@ function requireElement<T extends Element>(selector: string): T {
 }
 
 const canvas = requireElement<HTMLCanvasElement>('#game');
+const terrainAtlas = requireElement<HTMLImageElement>('#terrain-atlas');
 const board = requireElement<HTMLElement>('.board');
 const overlay = requireElement<HTMLElement>('#overlay');
 const overlayTitle = requireElement<HTMLElement>('#overlay-title');
@@ -41,7 +48,7 @@ const gameContext = ctx;
 const game = new TankBattle();
 const input = new Input(canvas);
 const sound = new SoundBoard();
-let lastTime = performance.now();
+let lastTick = tickAt(performance.now());
 let renderScale = 1;
 
 // 画布按实际显示尺寸和屏幕像素比渲染，游戏逻辑仍使用 416x416 坐标。
@@ -81,17 +88,21 @@ window.addEventListener('keydown', () => sound.unlock());
 window.addEventListener('resize', resizeCanvas);
 
 function frame(now: number): void {
-  const dt = Math.min(MAX_FRAME_MS, now - lastTime);
-  lastTime = now;
+  const currentTick = tickAt(now);
   try {
     if (input.consumeMute()) {
       sound.toggleMute();
       syncSoundToggle();
     }
-    game.update(dt, input);
+    // 按经过的时间补足逻辑步数；从后台返回后最多补算 100 毫秒。
+    lastTick = Math.max(lastTick, currentTick - MAX_CATCH_UP_TICKS);
+    while (lastTick < currentTick) {
+      lastTick += 1;
+      game.update(TICK_MS, input);
+    }
     game.drainSounds().forEach((name) => sound.play(name));
     gameContext.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-    renderWorld(gameContext, game.getRenderState());
+    renderWorld(gameContext, game.getRenderState(), terrainAtlas);
     syncHud();
   } catch (error) {
     console.error('[tank-battle] 游戏循环异常', error);

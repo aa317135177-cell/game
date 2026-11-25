@@ -1,6 +1,5 @@
-import { BULLET_SIZE, COLS, MAP_SIZE, ROWS, TILE } from './constants';
-import { drawExplosion, drawPowerUp } from './draw-effects';
-import { TAU } from './draw-shapes';
+import { COLS, MAP_SIZE, ROWS, TILE } from './constants';
+import { drawBullet, drawExplosion, drawPowerUp } from './draw-effects';
 import { drawTank } from './draw-tank';
 import type { GameMap } from './map';
 import type { Bullet, Explosion, PowerUp, StageBanner, Tank } from './types';
@@ -16,13 +15,13 @@ export interface RenderState {
   banner: StageBanner | null;
 }
 
-export function renderWorld(ctx: CanvasRenderingContext2D, state: RenderState): void {
+export function renderWorld(ctx: CanvasRenderingContext2D, state: RenderState, terrainAtlas: HTMLImageElement): void {
   ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
   drawGround(ctx);
-  drawTiles(ctx, state, false);
+  drawTiles(ctx, state, false, terrainAtlas);
   state.tanks.forEach((tank) => drawTank(ctx, tank, state.clock));
   state.bullets.forEach((bullet) => drawBullet(ctx, bullet));
-  drawTiles(ctx, state, true);
+  drawTiles(ctx, state, true, terrainAtlas);
   if (state.powerUp) {
     drawPowerUp(ctx, state.powerUp, state.clock);
   }
@@ -49,7 +48,12 @@ function drawGround(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-function drawTiles(ctx: CanvasRenderingContext2D, state: RenderState, grassOnly: boolean): void {
+function drawTiles(
+  ctx: CanvasRenderingContext2D,
+  state: RenderState,
+  grassOnly: boolean,
+  terrainAtlas: HTMLImageElement,
+): void {
   const { map, clock, baseRingFlashing } = state;
   for (let row = 0; row < ROWS; row += 1) {
     for (let col = 0; col < COLS; col += 1) {
@@ -59,43 +63,44 @@ function drawTiles(ctx: CanvasRenderingContext2D, state: RenderState, grassOnly:
       }
       const x = col * TILE;
       const y = row * TILE;
-      if (tile === 1) {
-        drawBrick(ctx, x, y);
-      } else if (tile === 2) {
-        const showAsBrick = baseRingFlashing && map.isFortifiedCell(col, row);
-        if (showAsBrick) {
-          drawBrick(ctx, x, y);
-        } else {
-          drawSteel(ctx, x, y);
-        }
+      if (tile === 1 || tile === 2 || tile === 5) {
+        const material = tile === 2 && baseRingFlashing && map.isFortifiedCell(col, row) ? 1 : tile;
+        drawTerrainTile(ctx, terrainAtlas, material, col, row);
       } else if (tile === 3) {
         drawWater(ctx, x, y, clock);
       } else if (tile === 4) {
         drawGrass(ctx, x, y);
-      } else if (tile === 5) {
-        drawBase(ctx, x, y, col, row, map);
       }
     }
   }
 }
 
-function drawBrick(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = '#8a3b24';
-  ctx.fillRect(x, y, TILE, TILE);
-  ctx.fillStyle = '#c46a45';
-  ctx.fillRect(x + 1, y + 1, TILE - 2, 6);
-  ctx.fillRect(x + 1, y + 9, TILE - 2, 6);
-  ctx.strokeStyle = '#5c2416';
-  ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
-}
+// 图集从左到右为砖墙、钢墙、基地。每幅图覆盖 2×2 个可独立摧毁的地图格。
+const TERRAIN_SPRITES = {
+  1: { index: 0, fallback: '#bb6036' },
+  2: { index: 1, fallback: '#6286a8' },
+  5: { index: 2, fallback: '#dfb344' },
+} as const;
 
-function drawSteel(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = '#8d939b';
-  ctx.fillRect(x, y, TILE, TILE);
-  ctx.fillStyle = '#c5cbd3';
-  ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-  ctx.fillStyle = '#5d636b';
-  ctx.fillRect(x + 6, y + 6, 4, 4);
+function drawTerrainTile(
+  ctx: CanvasRenderingContext2D,
+  atlas: HTMLImageElement,
+  material: keyof typeof TERRAIN_SPRITES,
+  col: number,
+  row: number,
+): void {
+  const sprite = TERRAIN_SPRITES[material];
+  const x = col * TILE;
+  const y = row * TILE;
+  if (!atlas.complete || !atlas.naturalHeight) {
+    ctx.fillStyle = sprite.fallback;
+    ctx.fillRect(x, y, TILE, TILE);
+    return;
+  }
+  const half = atlas.naturalHeight / 2;
+  const sx = sprite.index * atlas.naturalHeight + (col % 2) * half;
+  const sy = (row % 2) * half;
+  ctx.drawImage(atlas, sx, sy, half, half, x, y, TILE, TILE);
 }
 
 function drawWater(ctx: CanvasRenderingContext2D, x: number, y: number, clock: number): void {
@@ -119,48 +124,6 @@ function drawGrass(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.moveTo(x + 9, y + TILE);
   ctx.lineTo(x + 11, y + 2);
   ctx.stroke();
-}
-
-function drawBase(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  col: number,
-  row: number,
-  map: GameMap,
-): void {
-  ctx.fillStyle = '#4a2c12';
-  ctx.fillRect(x, y, TILE, TILE);
-  // 基地占 2x2 格，徽标在最后绘制的右下格画，避免被其余格的底色盖住。
-  if (map.getTile(col + 1, row) === 5 || map.getTile(col, row + 1) === 5) {
-    return;
-  }
-  const originX = x - TILE;
-  const originY = y - TILE;
-  ctx.fillStyle = '#e8c547';
-  ctx.beginPath();
-  ctx.moveTo(originX + TILE, originY + 6);
-  ctx.lineTo(originX + TILE * 2 - 4, originY + TILE * 2 - 4);
-  ctx.lineTo(originX + 4, originY + TILE * 2 - 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#9a1f1f';
-  ctx.fillRect(originX + TILE - 2, originY + 2, 4, TILE * 2 - 6);
-}
-
-function drawBullet(ctx: CanvasRenderingContext2D, bullet: Bullet): void {
-  const centerX = bullet.x + BULLET_SIZE / 2;
-  const centerY = bullet.y + BULLET_SIZE / 2;
-  if (bullet.breaksSteel) {
-    ctx.fillStyle = 'rgba(255, 120, 60, 0.45)';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 5.5, 0, TAU);
-    ctx.fill();
-  }
-  ctx.fillStyle = bullet.faction === 'player' ? '#ffe08a' : '#f0f0f0';
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, 3.2, 0, TAU);
-  ctx.fill();
 }
 
 function drawBanner(ctx: CanvasRenderingContext2D, banner: StageBanner): void {

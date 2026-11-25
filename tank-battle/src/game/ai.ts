@@ -15,7 +15,7 @@ export function updateEnemyAi(
   enemy.thinkIn -= dt;
   const moved = drive(map, tanks, enemy);
   if (!moved || enemy.thinkIn <= 0) {
-    enemy.dir = chooseDirection(enemy, player, baseCenter);
+    enemy.dir = chooseDirection(map, enemy, player, baseCenter);
     enemy.thinkIn = 380 + Math.random() * 700;
     drive(map, tanks, enemy);
   }
@@ -26,12 +26,16 @@ function drive(map: GameMap, tanks: Tank[], enemy: Tank): boolean {
   return moveTank(map, tanks, enemy, vector.x * enemy.speed, vector.y * enemy.speed);
 }
 
-function chooseDirection(enemy: Tank, player: Tank | null, baseCenter: Point): Direction {
+function chooseDirection(map: GameMap, enemy: Tank, player: Tank | null, baseCenter: Point): Direction {
   const roll = Math.random();
   const centerX = enemy.x + TANK_SIZE / 2;
   const centerY = enemy.y + TANK_SIZE / 2;
   if (roll < 0.35 && player) {
-    return dirToPoint(centerX, centerY, player.x + TANK_SIZE / 2, player.y + TANK_SIZE / 2);
+    const playerX = player.x + TANK_SIZE / 2;
+    const playerY = player.y + TANK_SIZE / 2;
+    if (!map.isGrassAt(playerX, playerY)) {
+      return dirToPoint(centerX, centerY, playerX, playerY);
+    }
   }
   if (roll < 0.6) {
     return dirToPoint(centerX, centerY, baseCenter.x, baseCenter.y);

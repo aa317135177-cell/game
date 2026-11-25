@@ -77,6 +77,7 @@ export class TankBattle {
   update(dt: number, input: Input): void {
     const confirmPressed = input.consumeConfirm();
     const pausePressed = input.consumePause();
+    const firing = input.consumeFire();
 
     if (this.phase !== 'playing') {
       if (confirmPressed) {
@@ -96,7 +97,7 @@ export class TankBattle {
     }
 
     this.clock += dt;
-    this.tickPlayer(dt, input);
+    this.tickPlayer(dt, input, firing);
     this.tickEnemies(dt);
     this.tickBullets();
     this.tickPowerUp();
@@ -214,7 +215,7 @@ export class TankBattle {
     this.emit('start');
   }
 
-  private tickPlayer(dt: number, input: Input): void {
+  private tickPlayer(dt: number, input: Input, firing: boolean): void {
     const player = this.getPlayer();
     if (!player) {
       return;
@@ -229,7 +230,7 @@ export class TankBattle {
       moveTank(this.map, this.tanks, player, vector.x * player.speed, vector.y * player.speed);
     }
     tickTankAnim(player, dt, Math.hypot(player.x - prevX, player.y - prevY));
-    if (input.isFiring()) {
+    if (firing) {
       this.tryFire(player);
     }
   }
@@ -286,7 +287,9 @@ export class TankBattle {
     const centerX = bullet.x + BULLET_SIZE / 2;
     const centerY = bullet.y + BULLET_SIZE / 2;
     if (centerX < 0 || centerY < 0 || centerX > MAP_SIZE || centerY > MAP_SIZE) {
-      this.addExplosion('small', Math.min(MAP_SIZE, Math.max(0, centerX)), Math.min(MAP_SIZE, Math.max(0, centerY)), 8);
+      const x = Math.min(MAP_SIZE, Math.max(0, centerX));
+      const y = Math.min(MAP_SIZE, Math.max(0, centerY));
+      this.addBlast('small', x, y, 8, bullet.firePower);
       return false;
     }
 
@@ -294,14 +297,14 @@ export class TankBattle {
     const tipY = centerY + vector.y * (BULLET_SIZE / 2);
     const impact = this.map.hitBullet(tipX, tipY, bullet.dir, bullet.breaksSteel, bullet.faction === 'player');
     if (impact === 'base') {
-      this.addExplosion('big', centerX, centerY, 26);
+      this.addBlast('big', centerX, centerY, 26, bullet.firePower);
       this.emit('bigExplode');
       this.baseLost = true;
       this.scheduleEnd('lose');
       return false;
     }
     if (impact !== 'none') {
-      this.addExplosion('small', tipX, tipY, 9);
+      this.addBlast('small', tipX, tipY, 9, bullet.firePower);
       if (bullet.faction === 'player') {
         this.emit(impact === 'steel' ? 'hitSteel' : 'hitBrick');
       }
@@ -340,11 +343,12 @@ export class TankBattle {
         }
         removedIds.add(firstBullet.id);
         removedIds.add(secondBullet.id);
-        this.addExplosion(
+        this.addBlast(
           'small',
           (firstBullet.x + secondBullet.x) / 2 + BULLET_SIZE / 2,
           (firstBullet.y + secondBullet.y) / 2 + BULLET_SIZE / 2,
           7,
+          Math.max(firstBullet.firePower, secondBullet.firePower),
         );
       }
     }
@@ -355,7 +359,7 @@ export class TankBattle {
     const centerX = bullet.x + BULLET_SIZE / 2;
     const centerY = bullet.y + BULLET_SIZE / 2;
     if (tank.invincibleUntil > this.clock) {
-      this.addExplosion('small', centerX, centerY, 8);
+      this.addBlast('small', centerX, centerY, 8, bullet.firePower);
       return;
     }
     if (tank.bonus) {
@@ -364,20 +368,20 @@ export class TankBattle {
     }
     tank.hp -= 1;
     if (tank.hp > 0) {
-      this.addExplosion('small', centerX, centerY, 10);
+      this.addBlast('small', centerX, centerY, 10, bullet.firePower);
       if (bullet.faction === 'player') {
         this.emit('hitSteel');
       }
       return;
     }
-    this.destroyTank(tank);
+    this.destroyTank(tank, bullet.firePower);
   }
 
-  private destroyTank(tank: Tank): void {
+  private destroyTank(tank: Tank, firePower = 0): void {
     this.tanks = this.tanks.filter((item) => item.id !== tank.id);
     const centerX = tank.x + TANK_SIZE / 2;
     const centerY = tank.y + TANK_SIZE / 2;
-    this.addExplosion('big', centerX, centerY, 22);
+    this.addBlast('big', centerX, centerY, 22, firePower);
     if (tank.kind === 'player') {
       this.emit('bigExplode');
       this.playerId = null;
@@ -393,7 +397,7 @@ export class TankBattle {
     this.emit('explode');
     const points = SCORE_BY_KIND[tank.kind];
     this.score += points;
-    this.addExplosion('score', centerX, centerY, 0, `+${points}`);
+    this.explosions.push(createExplosion('score', centerX, centerY, 0, `+${points}`));
   }
 
   private tickPowerUp(): void {
@@ -435,7 +439,7 @@ export class TankBattle {
 
   private applyPowerUp(kind: PowerUpKind, player: Tank, pickedAt: Point): void {
     this.score += POWER_UP_SCORE;
-    this.addExplosion('score', pickedAt.x, pickedAt.y, 0, `+${POWER_UP_SCORE}`);
+    this.explosions.push(createExplosion('score', pickedAt.x, pickedAt.y, 0, `+${POWER_UP_SCORE}`));
     this.emit('powerUpPick');
     if (kind === 'star') {
       this.firePower = Math.min(MAX_FIRE_POWER, this.firePower + 1);
@@ -593,8 +597,8 @@ export class TankBattle {
     return this.tanks.find((tank) => tank.id === this.playerId) ?? null;
   }
 
-  private addExplosion(kind: Explosion['kind'], x: number, y: number, size: number, label = ''): void {
-    this.explosions.push(createExplosion(kind, x, y, size, label));
+  private addBlast(kind: 'big' | 'small', x: number, y: number, size: number, firePower: number): void {
+    this.explosions.push(createExplosion(kind, x, y, size, '', firePower));
   }
 
   private emit(sound: SoundName): void {

@@ -12,8 +12,9 @@ const DIR_KEYS: Record<string, Direction> = {
 };
 
 export class Input {
-  private readonly directions: Direction[] = [];
+  private readonly heldDirectionKeys: string[] = [];
   private fireHeld = false;
+  private firePressed = false;
   private pauseQueued = false;
   private confirmQueued = false;
   private muteQueued = false;
@@ -27,14 +28,16 @@ export class Input {
   }
 
   getDirection(): Direction | null {
-    if (this.directions.length === 0) {
+    if (this.heldDirectionKeys.length === 0) {
       return null;
     }
-    return this.directions[this.directions.length - 1];
+    return DIR_KEYS[this.heldDirectionKeys[this.heldDirectionKeys.length - 1]];
   }
 
-  isFiring(): boolean {
-    return this.fireHeld;
+  consumeFire(): boolean {
+    const firing = this.firePressed || this.fireHeld;
+    this.firePressed = false;
+    return firing;
   }
 
   consumePause(): boolean {
@@ -66,7 +69,9 @@ export class Input {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'KeyP') {
       event.preventDefault();
-      this.pauseQueued = true;
+      if (!event.repeat) {
+        this.pauseQueued = true;
+      }
       return;
     }
     if (event.code === 'Enter') {
@@ -78,24 +83,19 @@ export class Input {
       this.muteQueued = true;
       return;
     }
-    const direction = DIR_KEYS[event.code];
-    if (direction === undefined) {
+    if (DIR_KEYS[event.code] === undefined) {
       return;
     }
     event.preventDefault();
-    if (!this.directions.includes(direction)) {
-      this.directions.push(direction);
+    if (!event.repeat && !this.heldDirectionKeys.includes(event.code)) {
+      this.heldDirectionKeys.push(event.code);
     }
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    const direction = DIR_KEYS[event.code];
-    if (direction === undefined) {
-      return;
-    }
-    const index = this.directions.indexOf(direction);
+    const index = this.heldDirectionKeys.indexOf(event.code);
     if (index >= 0) {
-      this.directions.splice(index, 1);
+      this.heldDirectionKeys.splice(index, 1);
     }
   };
 
@@ -104,6 +104,7 @@ export class Input {
       return;
     }
     event.preventDefault();
+    this.firePressed = true;
     this.fireHeld = true;
   };
 
@@ -115,7 +116,8 @@ export class Input {
   };
 
   private readonly clear = (): void => {
-    this.directions.length = 0;
+    this.heldDirectionKeys.length = 0;
+    this.firePressed = false;
     this.fireHeld = false;
   };
 }
