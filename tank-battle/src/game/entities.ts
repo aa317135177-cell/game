@@ -58,7 +58,7 @@ export function createEnemy(x: number, y: number, kind: EnemyKind, bonus: boolea
   };
 }
 
-export function createBullet(tank: Tank): Bullet {
+export function createBullet(tank: Tank, enemyBulletSpeed = BULLET_SPEED): Bullet {
   const vector = DIR_VECTORS[tank.dir];
   const centerX = tank.x + TANK_SIZE / 2 - BULLET_SIZE / 2;
   const centerY = tank.y + TANK_SIZE / 2 - BULLET_SIZE / 2;
@@ -72,7 +72,7 @@ export function createBullet(tank: Tank): Bullet {
     faction: tank.faction,
     ownerId: tank.id,
     firePower: isPlayer ? tank.firePower : 0,
-    speed: isPlayer ? fireStats.bulletSpeed : BULLET_SPEED,
+    speed: isPlayer ? fireStats.bulletSpeed : enemyBulletSpeed,
     breaksSteel: isPlayer && fireStats.breaksSteel,
   };
 }

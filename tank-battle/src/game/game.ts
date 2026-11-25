@@ -200,7 +200,7 @@ export class TankBattle {
     this.powerUp = null;
     this.spawnQueue = buildSpawnQueue(level);
     this.spawnedCount = 0;
-    this.spawnIn = 300;
+    this.spawnIn = BANNER_MS;
     this.spawnCursor = 0;
     this.respawnIn = 0;
     this.shovelUntil = 0;
@@ -263,7 +263,7 @@ export class TankBattle {
       }
       this.emit('fire');
     }
-    this.bullets.push(createBullet(tank));
+    this.bullets.push(createBullet(tank, LEVELS[this.levelIndex].enemyBulletSpeed));
     tank.cooldown = tank.fireInterval;
     tank.barrelRecoil = 1;
   }
@@ -487,8 +487,9 @@ export class TankBattle {
     if (this.spawnedCount >= this.spawnQueue.length) {
       return;
     }
+    const level = LEVELS[this.levelIndex];
     const aliveEnemies = this.tanks.filter((tank) => tank.faction === 'enemy').length;
-    if (aliveEnemies >= MAX_ENEMIES_ALIVE) {
+    if (aliveEnemies >= (level.maxEnemiesAlive ?? MAX_ENEMIES_ALIVE)) {
       return;
     }
     this.spawnIn -= dt;
@@ -503,7 +504,7 @@ export class TankBattle {
     const isBonus = (this.spawnedCount + 1) % BONUS_EVERY === 0;
     this.tanks.push(createEnemy(spawnPoint.x, spawnPoint.y, this.spawnQueue[this.spawnedCount], isBonus));
     this.spawnedCount += 1;
-    this.spawnIn = LEVELS[this.levelIndex].spawnIntervalMs;
+    this.spawnIn = level.spawnIntervalMs;
   }
 
   private pickEnemySpawnPoint(): Point | null {

@@ -6,6 +6,8 @@ export interface LevelDef {
   layout: string[];
   enemies: Record<EnemyKind, number>;
   spawnIntervalMs: number;
+  maxEnemiesAlive?: number;
+  enemyBulletSpeed?: number;
 }
 
 const LAYOUT_TOKENS = new Set(['.', '#', '@', '~', '%', 'P', 'E', 'B']);
@@ -30,7 +32,9 @@ export const LEVELS: LevelDef[] = [
   {
     name: '边境哨所',
     enemies: { basic: 6, fast: 4, armor: 2 },
-    spawnIntervalMs: 2600,
+    spawnIntervalMs: 3600,
+    maxEnemiesAlive: 2,
+    enemyBulletSpeed: 3,
     layout: createLayout('边境哨所', [
       'E....E....E..',
       '.##.##.##.##.',
@@ -50,7 +54,9 @@ export const LEVELS: LevelDef[] = [
   {
     name: '钢铁要塞',
     enemies: { basic: 5, fast: 5, armor: 4 },
-    spawnIntervalMs: 2400,
+    spawnIntervalMs: 3000,
+    maxEnemiesAlive: 3,
+    enemyBulletSpeed: 4,
     layout: createLayout('钢铁要塞', [
       'E.@..E..@.E..',
       '.@@@.##.@@@..',
