@@ -34,6 +34,12 @@ export function drawPowerUpIcon(
   if (kind === 'star') {
     ctx.fillStyle = ICON_GOLD;
     drawStar(ctx, 0, 1, 9);
+  } else if (kind === 'maxStar') {
+    ctx.fillStyle = '#fff2ab';
+    drawStar(ctx, 0, -4, 6);
+    ctx.fillStyle = ICON_GOLD;
+    drawStar(ctx, -6, 5, 5);
+    drawStar(ctx, 6, 5, 5);
   } else if (kind === 'shovel') {
     drawShovel(ctx);
   } else if (kind === 'bomb') {

@@ -3,7 +3,7 @@ import { rectsOverlap } from './collision';
 import type { GameMap } from './map';
 import type { PowerUp, PowerUpKind, Rect } from './types';
 
-export const POWER_UP_KINDS: readonly PowerUpKind[] = ['star', 'shovel', 'bomb', 'helmet', 'tank'];
+export const POWER_UP_KINDS: readonly PowerUpKind[] = ['star', 'shovel', 'bomb', 'helmet', 'tank', 'maxStar'];
 
 const PICKUP_INSET = 4;
 

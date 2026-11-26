@@ -19,7 +19,7 @@ import {
   TANK_SIZE,
 } from './constants';
 import { isSpawnClear, moveTank, rectsOverlap, tankRect } from './collision';
-import { createBullet, createEnemy, createExplosion, createPlayer, tickTankAnim } from './entities';
+import { createBullet, createEnemy, createExplosion, createPlayer, oppositeDir, tickTankAnim } from './entities';
 import { updateEnemyAi } from './ai';
 import { buildSpawnQueue, getLevelEnemyTotal, LEVELS } from './levels';
 import { GameMap } from './map';
@@ -270,12 +270,14 @@ export class TankBattle {
 
   // 快子弹按小步推进，每一步都做碰撞，避免一帧直接穿过一格砖或一辆坦克。
   private tickBullets(): void {
-    let activeBullets = [...this.bullets];
+    // 贴身开火时两个炮口的弹体可能从出生就重叠。
+    let activeBullets = this.resolveBulletClashes(this.bullets);
     const maxSpeed = Math.max(0, ...activeBullets.map((bullet) => bullet.speed));
     const substeps = Math.max(1, Math.ceil(maxSpeed / BULLET_SUBSTEP));
     for (let step = 0; step < substeps && this.phase === 'playing'; step += 1) {
       activeBullets = activeBullets.filter((bullet) => this.advanceBullet(bullet, bullet.speed / substeps));
       activeBullets = this.resolveBulletClashes(activeBullets);
+      activeBullets = activeBullets.filter((bullet) => !this.hitTankWithBullet(bullet));
     }
     this.bullets = activeBullets;
   }
@@ -311,14 +313,18 @@ export class TankBattle {
       return false;
     }
 
+    return true;
+  }
+
+  private hitTankWithBullet(bullet: Bullet): boolean {
     const bulletBox = { x: bullet.x, y: bullet.y, w: BULLET_SIZE, h: BULLET_SIZE };
     const victim = this.tanks.find(
       (tank) => tank.faction !== bullet.faction && rectsOverlap(bulletBox, tankRect(tank)),
     );
-    if (victim) {
-      this.hitTank(victim, bullet);
+    if (!victim) {
       return false;
     }
+    this.hitTank(victim, bullet);
     return true;
   }
 
@@ -334,11 +340,7 @@ export class TankBattle {
         if (removedIds.has(firstBullet.id) || removedIds.has(secondBullet.id)) {
           continue;
         }
-        const overlapped = rectsOverlap(
-          { x: firstBullet.x, y: firstBullet.y, w: BULLET_SIZE, h: BULLET_SIZE },
-          { x: secondBullet.x, y: secondBullet.y, w: BULLET_SIZE, h: BULLET_SIZE },
-        );
-        if (!overlapped) {
+        if (!this.bulletsMeet(firstBullet, secondBullet)) {
           continue;
         }
         removedIds.add(firstBullet.id);
@@ -353,6 +355,30 @@ export class TankBattle {
       }
     }
     return removedIds.size === 0 ? bullets : bullets.filter((bullet) => !removedIds.has(bullet.id));
+  }
+
+  private bulletsMeet(a: Bullet, b: Bullet): boolean {
+    const closeX = Math.abs(a.x - b.x) < BULLET_SIZE;
+    const closeY = Math.abs(a.y - b.y) < BULLET_SIZE;
+    if (closeX && closeY) {
+      return true;
+    }
+    if (a.dir !== oppositeDir(b.dir)) {
+      return false;
+    }
+    const vertical = a.dir === 0 || a.dir === 2;
+    if (!(vertical ? closeY : closeX)) {
+      return false;
+    }
+    const half = BULLET_SIZE / 2;
+    const alongA = vertical ? a.y : a.x;
+    const alongB = vertical ? b.y : b.x;
+    const acrossA = (vertical ? a.x : a.y) + half;
+    const acrossB = (vertical ? b.x : b.y) + half;
+    // 两弹都进入窄道后才按车道抵消，避免在路口把空地也算作窄道。
+    const start = Math.min(alongA, alongB);
+    const end = Math.max(alongA, alongB) + BULLET_SIZE;
+    return this.map.sharesSingleLane(vertical, start, end, acrossA, acrossB);
   }
 
   private hitTank(tank: Tank, bullet: Bullet): void {
@@ -441,8 +467,8 @@ export class TankBattle {
     this.score += POWER_UP_SCORE;
     this.explosions.push(createExplosion('score', pickedAt.x, pickedAt.y, 0, `+${POWER_UP_SCORE}`));
     this.emit('powerUpPick');
-    if (kind === 'star') {
-      this.firePower = Math.min(MAX_FIRE_POWER, this.firePower + 1);
+    if (kind === 'star' || kind === 'maxStar') {
+      this.firePower = kind === 'maxStar' ? MAX_FIRE_POWER : Math.min(MAX_FIRE_POWER, this.firePower + 1);
       player.firePower = this.firePower;
       player.fireInterval = FIRE_POWER_STATS[this.firePower].fireInterval;
       return;

@@ -82,6 +82,23 @@ export class GameMap {
     this.baseRing = this.computeBaseRing();
   }
 
+  // 在交会位置横切道路。两格宽恰好容一辆坦克，墙被打穿后按新的路宽判断。
+  sharesSingleLane(vertical: boolean, start: number, end: number, acrossA: number, acrossB: number): boolean {
+    const first = Math.floor(Math.min(acrossA, acrossB) / TILE);
+    const last = Math.floor(Math.max(acrossA, acrossB) / TILE);
+    for (let section = Math.floor(start / TILE); section < Math.ceil(end / TILE); section += 1) {
+      const isOpen = (index: number): boolean => {
+        const tile = vertical ? this.getTile(index, section) : this.getTile(section, index);
+        return tile === 0 || tile === 4;
+      };
+      const edge = isOpen(first - 1) ? first - 1 : first;
+      if (last > edge + 1 || isOpen(edge - 1) || !isOpen(edge) || !isOpen(edge + 1) || isOpen(edge + 2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   canTankOccupy(x: number, y: number): boolean {
     if (x < 0 || y < 0 || x + TANK_SIZE > COLS * TILE || y + TANK_SIZE > ROWS * TILE) {
       return false;

@@ -8,7 +8,7 @@ export type Faction = 'player' | 'enemy';
 
 export type EnemyKind = 'basic' | 'fast' | 'armor';
 
-export type PowerUpKind = 'star' | 'shovel' | 'bomb' | 'helmet' | 'tank';
+export type PowerUpKind = 'star' | 'maxStar' | 'shovel' | 'bomb' | 'helmet' | 'tank';
 
 export type BulletImpact = 'none' | 'brick' | 'steel' | 'steelBroken' | 'base';
 
