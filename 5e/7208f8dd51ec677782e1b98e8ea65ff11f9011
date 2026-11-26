@@ -1,0 +1,21 @@
+tank-battle/src/game/map.ts
+  s_ad59ca49700e3a::t_96df338f381425 85-101
+tank-battle/src/game/game.ts
+  s_ad59ca49700e3a::t_96df338f381425 22,273-274,280,316-319,324,327,343,360-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "5e7208f8dd51ec677782e1b98e8ea65ff11f9011",
+  "prompts": {},
+  "sessions": {
+    "s_ad59ca49700e3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a21172-803e-7091-96e7-867dfddf2e88",
+        "model": "unknown"
+      },
+      "human_author": "aa317135177-cell <aa317135177-cell@users.noreply.github.com>"
+    }
+  }
+}
